@@ -103,7 +103,7 @@ export default function Home() {
         <p className="text-sm mt-4 opacity-70">keep touchin’. the grass needs you.</p>
       </div>
 
-      <p className="text-gray-300 w-2/3 mt-16 mb-4 text-center">made with ❤️ by charlie. copyright © 2025. open source on <a className="underline" href="https://github.com/crnicholson/gras">github</a>.</p>
+      <p className="text-gray-300 w-2/3 mt-16 mb-4 text-center">made with ❤️ by charlie. © {new Date().getFullYear()}. open source on <a className="underline" href="https://github.com/crnicholson/gras">github</a>.</p>
     </div>
   )
 }
