@@ -19,13 +19,33 @@ const initialPowerups: Powerup[] = [
   { name: "worm boost", type: "tap", value: 5, baseCost: 150, level: 0 },
 ]
 
+type Level = {
+  name: string
+  minTaps: number
+  level: number
+  image: string
+}
+
+const levels: Level[] = [
+  { name: "amateur", minTaps: 0, level: 1, image: "/toucher.png" },
+  { name: "rake", minTaps: 20, level: 2, image: "/rake.png" },
+  { name: "hoe", minTaps: 100, level: 3, image: "/hoe.png" },
+  { name: "shovel", minTaps: 500, level: 4, image: "/shovel.png" },
+  { name: "weedwacker", minTaps: 1000, level: 5, image: "/weedwacker.png" },
+  { name: "roomba mower", minTaps: 5000, level: 6, image: "/roomba.png" },
+  { name: "god", minTaps: 10000, level: 7, image: "/windowsGrass.png" },
+]
+
 export default function Home() {
   const [taps, setTaps] = useState(0)
   const [tapPower, setTapPower] = useState(1)
   const [cps, setCPS] = useState(0)
   const [powerups, setPowerups] = useState<Powerup[]>(initialPowerups)
-  const [level, setLevel] = useState("hoe")
+  const [totalTaps, setTotalTaps] = useState(0)
+
+  const [levelName, setLevelName] = useState("amateur")
   const [levelNumber, setLevelNumber] = useState(1)
+  const [levelImage, setLevelImage] = useState("/toucher.png")
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -53,22 +73,36 @@ export default function Home() {
     setPowerups(updated)
   }
 
+  const findLevel = () => {
+    for (const i in levels) {
+      if (levels[i].minTaps <= totalTaps) {
+        setLevelName(levels[i].name)
+        setLevelNumber(levels[i].level)
+        setLevelImage(levels[i].image)
+      }
+    }
+  }
+
   return (
     <div className="bg-gradient-to-b from-lime-950 to-green-900 min-h-screen flex flex-col items-center justify-center p-4 text-white font-mono">
       <div className="mt-10 bg-black/20 backdrop-blur-md rounded-3xl shadow-2xl p-10 flex flex-col items-center gap-6 w-full border max-w-lg border-green-800">
 
-        <div className="-mt-18 bg-green-900 rounded-3xl p-4 shadow-2xl border border-lime-300">level {levelNumber}: {level}</div>
+        <div className="-mt-18 bg-green-900 rounded-3xl p-4 shadow-2xl border border-lime-300">level {levelNumber}: {levelName}</div>
 
         <h1 className="text-4xl font-extrabold tracking-tight text-lime-300 drop-shadow-md animate-pulse">
           🌿 touch the gras 🌿
         </h1>
 
         <button
-          onClick={() => setTaps(taps + tapPower)}
+          onClick={() => {
+            setTaps(taps + tapPower)
+            setTotalTaps(totalTaps + 1)
+            findLevel()
+          }}
           className="transition hover:scale-105 active:scale-95 focus:outline-none"
         >
           <Image
-            src="/grass.png"
+            src={levelImage}
             alt="Touch the Gras"
             width={200}
             height={200}
