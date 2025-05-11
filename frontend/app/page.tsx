@@ -52,14 +52,6 @@ export default function Home() {
 
   const { user, isLoading } = useUser()
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTaps(current => current + cps)
-      setTotalTaps(current => current + cps)
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [cps])
-
   const calculateCost = (baseCost: number, level: number) =>
     Math.floor(baseCost * Math.pow(1.5, level))
 
@@ -89,26 +81,7 @@ export default function Home() {
     }
   }, [totalTaps])
 
-  const createAccount = async () => {
-    try {
-      const response = await fetch(`${SERVER}/api/create-account`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      })
-      if (!response.ok) {
-        const error = await response.json()
-        console.error("Account creation failed:", error)
-      } else {
-        const data = await response.json()
-        console.log("Account created:", data)
-      }
-    } catch (error) {
-      console.error("Client-side error:", error)
-    }
-  }
-
-  const saveProgress = () => {
+  const saveProgress = useCallback(() => {
     const data = {
       taps,
       tapPower,
@@ -121,34 +94,82 @@ export default function Home() {
     } else {
       console.error("STORAGE_KEY is not defined")
     }
-  }
+  }, [taps, tapPower, cps, powerups, totalTaps])
 
-  const loadProgress = () => {
-    if (STORAGE_KEY) {
-      const saved = localStorage.getItem(STORAGE_KEY)
-      if (!saved) return
-      try {
-        const data = JSON.parse(saved)
-        setTaps(data.taps ?? 0)
-        setTapPower(data.tapPower ?? 1)
-        setCPS(data.cps ?? 0)
-        setPowerups(data.powerups)
-        setTotalTaps(data.totalTaps ?? 0)
-      } catch (err) {
-        console.error("Failed to parse save data:", err)
+  const saveToServer = useCallback(async () => {
+    try {
+      const response = await fetch(`${SERVER}/save-progress`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: user?.sub, name: user?.name, taps, tapPower, cps, powerups, totalTaps }),
+      })
+      if (!response.ok) {
+        const error = await response.json()
+        console.error("", error)
       }
-    } else {
-      console.error("STORAGE_KEY is not defined")
+    } catch (error) {
+      console.error("client-side error:", error)
     }
-  }
+  }, [user?.sub, user?.name, taps, tapPower, cps, powerups, totalTaps])
 
   useEffect(() => {
+    const loadProgress = async () => {
+      if (user) {
+        try {
+          const response = await fetch(`${SERVER}/load-progress`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: user?.sub }),
+          })
+          if (!response.ok) {
+            const error = await response.json()
+            console.log("", error)
+          } else {
+            const data = await response.json()
+
+            setTaps(data.taps ?? 0)
+            setTapPower(data.tapPower ?? 1)
+            setCPS(data.cps ?? 0)
+            setPowerups(data.powerups)
+            setTotalTaps(data.totalTaps ?? 0)
+          }
+        } catch (error) {
+          console.error("Client-side error:", error)
+        }
+      } else if (STORAGE_KEY) {
+        const saved = localStorage.getItem(STORAGE_KEY)
+        if (!saved) return
+        try {
+          const data = JSON.parse(saved)
+          setTaps(data.taps ?? 0)
+          setTapPower(data.tapPower ?? 1)
+          setCPS(data.cps ?? 0)
+          setPowerups(data.powerups)
+          setTotalTaps(data.totalTaps ?? 0)
+        } catch (err) {
+          console.error("failed to parse save data:", err)
+        }
+      } else {
+        console.error("STORAGE_KEY is not defined")
+      }
+    }
+
     loadProgress()
-  }, [])
+  }, [user])
 
   useEffect(() => {
     findLevel()
   }, [totalTaps, findLevel])
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTaps(current => current + cps)
+      setTotalTaps(current => current + cps)
+      saveProgress()
+      if (user) saveToServer()
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [cps, saveProgress, user, saveToServer])
 
   return (
     <div className="bg-gradient-to-b from-lime-950 to-green-900 min-h-screen flex flex-col items-center justify-center p-4 text-white font-mono">
@@ -172,6 +193,7 @@ export default function Home() {
             setTotalTaps(totalTaps + 1)
             findLevel()
             saveProgress()
+            if (user) saveToServer()
           }}
           className="transition hover:scale-105 active:scale-95 focus:outline-none"
         >
@@ -199,6 +221,7 @@ export default function Home() {
                 onClick={() => {
                   buyPowerup(i)
                   saveProgress()
+                  if (user) saveToServer()
                 }}
                 className={`w-full font-bold p-4 rounded-lg shadow-inner transition ${taps >= cost
                   ? "bg-green-600 hover:bg-green-700 text-white"
@@ -211,7 +234,7 @@ export default function Home() {
           })}
         </div>
 
-        <p className="text-sm mt-4 opacity-70">keep touchin’. the grass needs you.</p>
+        <p className="text-sm mt-4 opacity-70">keep touchin{"'"}. the grass needs you.</p>
       </div>
 
       <p className="text-gray-300 w-2/3 mt-16 mb-4 text-center">made with ❤️ by charlie. © {new Date().getFullYear()}. open source on <a className="underline" href="https://github.com/crnicholson/gras">github</a>.</p>
