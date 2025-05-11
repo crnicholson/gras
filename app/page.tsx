@@ -36,6 +36,8 @@ const levels: Level[] = [
   { name: "god", minTaps: 10000, level: 7, image: "/windowsGrass.png" },
 ]
 
+const SERVER = "localhost:5000"
+
 export default function Home() {
   const [taps, setTaps] = useState(0)
   const [tapPower, setTapPower] = useState(1)
@@ -46,6 +48,10 @@ export default function Home() {
   const [levelName, setLevelName] = useState("amateur")
   const [levelNumber, setLevelNumber] = useState(1)
   const [levelImage, setLevelImage] = useState("/toucher.png")
+
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [emailPrompt, setEmailPrompt] = useState(false)
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -83,8 +89,82 @@ export default function Home() {
     }
   }
 
+  function isValidEmail(email: string): boolean {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  }
+
+  const createAccount = async () => {
+    try {
+      const response = await fetch(SERVER + "/api/create-account", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: email, password: password }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+      } else {
+        const data = await response.json();
+
+
+      }
+    } catch (error) {
+      console.log("Client-side error: " + error);
+    }
+  };
+
   return (
     <div className="bg-gradient-to-b from-lime-950 to-green-900 min-h-screen flex flex-col items-center justify-center p-4 text-white font-mono">
+
+      <a href="/auth/login">Login</a>
+
+
+      <div className="h-10 w-full flex justify-between items-center">
+        <p>gras</p>
+        <button onClick={() => {
+          if (email === "" || password === "") {
+            setEmailPrompt(true);
+          }
+        }}>save progress</button>
+
+        {emailPrompt && (
+          <div>
+            <div className="">
+              <h2 className="text-lg font-bold">Enter your email and password</h2>
+              <input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full mt-2"
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full mt-2"
+              />
+              <button
+                onClick={() => {
+                  if (isValidEmail(email)) {
+                    createAccount();
+                    setEmailPrompt(false);
+                  } else {
+                    alert("Invalid email format");
+                  }
+                }}
+                className="mt-4"
+              >
+                Create Account
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="mt-10 bg-black/20 backdrop-blur-md rounded-3xl shadow-2xl p-10 flex flex-col items-center gap-6 w-full border max-w-lg border-green-800">
 
         <div className="-mt-18 bg-green-900 rounded-3xl p-4 shadow-2xl border border-lime-300">level {levelNumber}: {levelName}</div>
