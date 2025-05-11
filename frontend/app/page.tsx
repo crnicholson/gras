@@ -31,7 +31,7 @@ const levels: Level[] = [
 ]
 
 const SERVER = process.env.NEXT_PUBLIC_SERVER
-const STORAGE_KEY = process.env.NEXT_PUBLIC_LOCAL_STORAGE_KEY
+const STORAGE_KEY = process.env.NEXT_PUBLIC_LOCAL_STORAGE
 
 export default function Home() {
   const [taps, setTaps] = useState(0)
