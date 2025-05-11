@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 'use client'
-import { useState, useEffect } from "react"
+
+import { useState, useEffect, useCallback } from "react"
 import Image from "next/image"
+import { useUser } from "@auth0/nextjs-auth0"
 
 type Powerup = {
   name: string
@@ -10,14 +12,6 @@ type Powerup = {
   baseCost: number
   level: number
 }
-
-const initialPowerups: Powerup[] = [
-  { name: "fertilizer", type: "tap", value: 1, baseCost: 10, level: 0 },
-  { name: "sunlight", type: "tap", value: 3, baseCost: 30, level: 0 },
-  { name: "sprinkler", type: "cps", value: 1, baseCost: 50, level: 0 },
-  { name: "lawnmower army", type: "cps", value: 3, baseCost: 100, level: 0 },
-  { name: "worm boost", type: "tap", value: 5, baseCost: 150, level: 0 },
-]
 
 type Level = {
   name: string
@@ -36,26 +30,32 @@ const levels: Level[] = [
   { name: "god", minTaps: 10000, level: 7, image: "/windowsGrass.png" },
 ]
 
-const SERVER = "localhost:5000"
+const SERVER = process.env.NEXT_PUBLIC_SERVER
+const STORAGE_KEY = process.env.NEXT_PUBLIC_LOCAL_STORAGE_KEY
 
 export default function Home() {
   const [taps, setTaps] = useState(0)
   const [tapPower, setTapPower] = useState(1)
   const [cps, setCPS] = useState(0)
-  const [powerups, setPowerups] = useState<Powerup[]>(initialPowerups)
+  const [powerups, setPowerups] = useState<Powerup[]>([
+    { name: "fertilizer", type: "tap", value: 1, baseCost: 10, level: 0 },
+    { name: "sunlight", type: "tap", value: 3, baseCost: 30, level: 0 },
+    { name: "sprinkler", type: "cps", value: 1, baseCost: 50, level: 0 },
+    { name: "lawnmower army", type: "cps", value: 3, baseCost: 100, level: 0 },
+    { name: "worm boost", type: "tap", value: 5, baseCost: 150, level: 0 },
+  ])
   const [totalTaps, setTotalTaps] = useState(0)
 
   const [levelName, setLevelName] = useState("amateur")
   const [levelNumber, setLevelNumber] = useState(1)
   const [levelImage, setLevelImage] = useState("/toucher.png")
 
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [emailPrompt, setEmailPrompt] = useState(false)
+  const { user, isLoading } = useUser()
 
   useEffect(() => {
     const interval = setInterval(() => {
       setTaps(current => current + cps)
+      setTotalTaps(current => current + cps)
     }, 1000)
     return () => clearInterval(interval)
   }, [cps])
@@ -79,94 +79,87 @@ export default function Home() {
     setPowerups(updated)
   }
 
-  const findLevel = () => {
-    for (const i in levels) {
-      if (levels[i].minTaps <= totalTaps) {
-        setLevelName(levels[i].name)
-        setLevelNumber(levels[i].level)
-        setLevelImage(levels[i].image)
+  const findLevel = useCallback(() => {
+    for (const lvl of levels) {
+      if (totalTaps >= lvl.minTaps) {
+        setLevelName(lvl.name)
+        setLevelNumber(lvl.level)
+        setLevelImage(lvl.image)
       }
     }
-  }
-
-  function isValidEmail(email: string): boolean {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  }
+  }, [totalTaps])
 
   const createAccount = async () => {
     try {
-      const response = await fetch(SERVER + "/api/create-account", {
+      const response = await fetch(`${SERVER}/api/create-account`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email: email, password: password }),
-      });
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      })
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json()
+        console.error("Account creation failed:", error)
       } else {
-        const data = await response.json();
-
-
+        const data = await response.json()
+        console.log("Account created:", data)
       }
     } catch (error) {
-      console.log("Client-side error: " + error);
+      console.error("Client-side error:", error)
     }
-  };
+  }
+
+  const saveProgress = () => {
+    const data = {
+      taps,
+      tapPower,
+      cps,
+      powerups,
+      totalTaps,
+    }
+    if (STORAGE_KEY) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+    } else {
+      console.error("STORAGE_KEY is not defined")
+    }
+  }
+
+  const loadProgress = () => {
+    if (STORAGE_KEY) {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (!saved) return
+      try {
+        const data = JSON.parse(saved)
+        setTaps(data.taps ?? 0)
+        setTapPower(data.tapPower ?? 1)
+        setCPS(data.cps ?? 0)
+        setPowerups(data.powerups)
+        setTotalTaps(data.totalTaps ?? 0)
+      } catch (err) {
+        console.error("Failed to parse save data:", err)
+      }
+    } else {
+      console.error("STORAGE_KEY is not defined")
+    }
+  }
+
+  useEffect(() => {
+    loadProgress()
+  }, [])
+
+  useEffect(() => {
+    findLevel()
+  }, [totalTaps, findLevel])
 
   return (
     <div className="bg-gradient-to-b from-lime-950 to-green-900 min-h-screen flex flex-col items-center justify-center p-4 text-white font-mono">
-
-      <a href="/auth/login">Login</a>
-
-
       <div className="h-10 w-full flex justify-between items-center">
         <p>gras</p>
-        <button onClick={() => {
-          if (email === "" || password === "") {
-            setEmailPrompt(true);
-          }
-        }}>save progress</button>
-
-        {emailPrompt && (
-          <div>
-            <div className="">
-              <h2 className="text-lg font-bold">Enter your email and password</h2>
-              <input
-                type="email"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full mt-2"
-              />
-              <input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full mt-2"
-              />
-              <button
-                onClick={() => {
-                  if (isValidEmail(email)) {
-                    createAccount();
-                    setEmailPrompt(false);
-                  } else {
-                    alert("Invalid email format");
-                  }
-                }}
-                className="mt-4"
-              >
-                Create Account
-              </button>
-            </div>
-          </div>
-        )}
+        <a href="/auth/login">🔑</a>
+        <a href="/auth/logout">👋</a>
+        <p>❓</p>
       </div>
 
       <div className="mt-10 bg-black/20 backdrop-blur-md rounded-3xl shadow-2xl p-10 flex flex-col items-center gap-6 w-full border max-w-lg border-green-800">
-
         <div className="-mt-18 bg-green-900 rounded-3xl p-4 shadow-2xl border border-lime-300">level {levelNumber}: {levelName}</div>
 
         <h1 className="text-4xl font-extrabold tracking-tight text-lime-300 drop-shadow-md animate-pulse">
@@ -178,6 +171,7 @@ export default function Home() {
             setTaps(taps + tapPower)
             setTotalTaps(totalTaps + 1)
             findLevel()
+            saveProgress()
           }}
           className="transition hover:scale-105 active:scale-95 focus:outline-none"
         >
@@ -202,7 +196,10 @@ export default function Home() {
               <button
                 key={i}
                 disabled={taps < cost}
-                onClick={() => buyPowerup(i)}
+                onClick={() => {
+                  buyPowerup(i)
+                  saveProgress()
+                }}
                 className={`w-full font-bold p-4 rounded-lg shadow-inner transition ${taps >= cost
                   ? "bg-green-600 hover:bg-green-700 text-white"
                   : "bg-gray-700 text-gray-400 cursor-not-allowed"
