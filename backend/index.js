@@ -2,7 +2,9 @@ const { MongoClient } = require("mongodb");
 const express = require("express");
 const cors = require("cors");
 
-const client = new MongoClient("mongodb://localhost:27017");
+const client = new MongoClient(
+  "mongodb://root:example@hackclub.app:43463/?authSource=admin"
+);
 const gras = client.db("gras").collection("users");
 
 const app = express();
