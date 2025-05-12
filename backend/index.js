@@ -1,10 +1,9 @@
+require("dotenv").config();
 const { MongoClient } = require("mongodb");
 const express = require("express");
 const cors = require("cors");
 
-const client = new MongoClient(
-  "mongodb://root:example@hackclub.app:43463/?authSource=admin"
-);
+const client = new MongoClient(process.env.MONGO_DB_SERVER);
 const gras = client.db("gras").collection("users");
 
 const app = express();
